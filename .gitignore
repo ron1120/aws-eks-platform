@@ -1,0 +1,45 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan*
+crash.log
+crash.*.log
+errored.tfstate
+.terraform.tfstate.lock.info
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Variable files often contain secrets — commit example.tfvars instead
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+!example.tfvars
+!*.example.tfvars
+
+# Kubeconfig / secrets
+kubeconfig*
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+secrets/
+
+# Helm packaged charts
+**/charts/*.tgz
+
+# OS / editor
+.DS_Store
+.idea/
+*.swp
+*~
+
+# Locally downloaded terraform binary (see README note on installed version)
+.bin/
