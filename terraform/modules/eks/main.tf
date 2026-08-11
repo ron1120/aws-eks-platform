@@ -16,9 +16,20 @@ module "eks" {
   # EKS access entry, so `kubectl` works immediately after apply.
   enable_cluster_creator_admin_permissions = true
 
-  # No `addons` block: EKS auto-provisions the default add-ons (vpc-cni,
-  # kube-proxy, coredns) when the cluster is created, so they're left
-  # unmanaged by Terraform rather than adopted here.
+  # Required: the EKS module sets bootstrap_self_managed_addons = false, so
+  # these must be installed explicitly or nodes stay NotReady forever.
+  addons = {
+    vpc-cni = {
+      before_compute = true
+      most_recent    = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    coredns = {
+      most_recent = true
+    }
+  }
 
   eks_managed_node_groups = {
     default = {
