@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ron1120/aws-eks-platform.git
+    targetRevision: main
+    path: helm/frontend
+    helm:
+      releaseName: frontend
+  destination:
+    server: https://kubernetes.default.svc
+    # Namespace is created by Terraform (terraform/app-secrets.tf), not here.
+    namespace: tm-project
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

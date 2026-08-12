@@ -46,3 +46,40 @@ variable "node_desired_size" {
   type    = number
   default = 2
 }
+
+variable "db_name" {
+  type    = string
+  default = "appdb"
+}
+
+variable "db_username" {
+  type    = string
+  default = "appuser"
+}
+
+variable "db_port" {
+  type    = number
+  default = 5432
+}
+
+variable "db_instance_class" {
+  type    = string
+  default = "db.t4g.micro"
+}
+
+variable "db_allocated_storage" {
+  type    = number
+  default = 20
+}
+
+variable "app_namespace" {
+  description = "Kubernetes namespace the app (backend/frontend Helm charts) will be deployed into"
+  type        = string
+  default     = "tm-project"
+}
+
+variable "ecr_repositories" {
+  description = "Names of the ECR repositories to create for the app images"
+  type        = list(string)
+  default     = ["tm-project-backend", "tm-project-frontend"]
+}

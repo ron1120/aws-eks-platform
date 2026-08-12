@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: "403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8000
+
+# Name of the Secret Terraform creates (see terraform/app-secrets.tf).
+# Provides DATABASE_URL, SECRET_KEY, CORS_ORIGINS as env vars via envFrom.
+existingSecret: tm-project-backend-secrets
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 5

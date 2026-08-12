@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
 # Brings the whole platform up from scratch (or resumes if already partially
-# up): VPC + EKS via Terraform, kubeconfig, ingress-nginx, ArgoCD, and any
-# ArgoCD Application manifests in argocd/apps/.
+# up): VPC + EKS + RDS + ECR repos + app namespace/Secret via Terraform,
+# kubeconfig, ingress-nginx, ArgoCD, and any ArgoCD Application manifests in
+# argocd/apps/.
 #
 # Safe to re-run — every step is idempotent (terraform apply, helm upgrade
 # --install, kubectl apply).
@@ -40,7 +41,7 @@ aws sts get-caller-identity >/dev/null
 log "Terraform init"
 terraform -chdir="$TERRAFORM_DIR" init -input=false
 
-log "Terraform apply (VPC + EKS)"
+log "Terraform apply (VPC + EKS + RDS + ECR + app namespace/Secret)"
 terraform -chdir="$TERRAFORM_DIR" apply -auto-approve
 
 CLUSTER_NAME="$(terraform -chdir="$TERRAFORM_DIR" output -raw cluster_name)"
@@ -84,6 +85,9 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 log "Done. Cluster nodes:"
 kubectl get nodes
 
+log "ECR repository URLs"
+terraform -chdir="$TERRAFORM_DIR" output -json ecr_repository_urls
+
 cat <<'EOF'
 
 Next steps:
@@ -94,6 +98,10 @@ Next steps:
   - Check ingress-nginx external address:
       kubectl get svc -n ingress-nginx
 
+  - Build + push app images (first time / after code changes), then apply
+    argocd/apps/backend.yaml and argocd/apps/frontend.yaml — see the repo
+    README for exact docker build/push and Helm values.yaml steps.
+
   - Remember to run ./scripts/destroy-cluster.sh when done for the day
-    to avoid paying for the cluster + NAT gateway overnight.
+    to avoid paying for the cluster + NAT gateway + RDS instance overnight.
 EOF

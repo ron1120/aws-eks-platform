@@ -52,3 +52,39 @@ output "oidc_provider_arn" {
   description = "ARN of the OIDC provider, needed later for IRSA"
   value       = module.eks.oidc_provider_arn
 }
+
+output "db_endpoint" {
+  description = "RDS connection endpoint (host:port)"
+  value       = module.rds.db_endpoint
+}
+
+output "db_address" {
+  description = "RDS host name only"
+  value       = module.rds.db_address
+}
+
+output "db_name" {
+  description = "Default database name"
+  value       = module.rds.db_name
+}
+
+output "db_username" {
+  description = "Database master username"
+  value       = module.rds.db_username
+}
+
+output "db_password" {
+  description = "Database master password"
+  value       = module.rds.db_password
+  sensitive   = true
+}
+
+output "ecr_repository_urls" {
+  description = "Map of ECR repository name -> full repository URL (use for `docker push` and Helm values.yaml image.repository)"
+  value       = { for name, repo in aws_ecr_repository.app : name => repo.repository_url }
+}
+
+output "app_namespace" {
+  description = "Kubernetes namespace the app Helm charts / ArgoCD Applications should target"
+  value       = var.app_namespace
+}

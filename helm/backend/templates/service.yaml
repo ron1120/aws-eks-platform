@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # Fixed name (not templated off Release.Name) so the frontend chart's
+  # Ingress can reference it by a predictable name (values.backend.serviceName).
+  name: backend
+spec:
+  selector:
+    app: {{ .Release.Name }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}

@@ -25,3 +25,20 @@ module "eks" {
   node_min_size       = var.node_min_size
   node_max_size       = var.node_max_size
 }
+
+module "rds" {
+  source = "./modules/rds"
+
+  project_name = var.project_name
+
+  vpc_id                 = module.vpc.vpc_id
+  private_subnet_ids     = module.vpc.private_subnet_ids
+  node_security_group_id = module.eks.node_security_group_id
+
+  db_name     = var.db_name
+  db_username = var.db_username
+  db_port     = var.db_port
+
+  instance_class    = var.db_instance_class
+  allocated_storage = var.db_allocated_storage
+}

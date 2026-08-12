@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: backend
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ron1120/aws-eks-platform.git
+    targetRevision: main
+    path: helm/backend
+    helm:
+      releaseName: backend
+  destination:
+    server: https://kubernetes.default.svc
+    # Namespace is created by Terraform (terraform/app-secrets.tf), not here —
+    # it must already exist before this Secret-dependent app can sync.
+    namespace: tm-project
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

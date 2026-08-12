@@ -1,0 +1,28 @@
+replicaCount: 1
+
+image:
+  repository: "403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend"
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# The backend Service this chart's Ingress routes "/api" to. Must match the
+# ArgoCD `helm.releaseName` used for the backend chart (Release name becomes
+# the Service name) and live in the same namespace.
+backend:
+  serviceName: backend
+  servicePort: 8000
+
+ingress:
+  enabled: true
+  className: nginx

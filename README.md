@@ -58,14 +58,21 @@ Amazon RDS PostgreSQL
 │   ├── main.tf             # Root module — wires child modules together
 │   ├── variables.tf        # Input variable declarations
 │   ├── outputs.tf          # Values exposed via `terraform output`
-│   ├── providers.tf        # AWS provider configuration
+│   ├── providers.tf        # AWS + Kubernetes provider configuration
+│   ├── versions.tf         # Explicit provider version requirements
+│   ├── ecr.tf               # ECR repositories for the app images
+│   ├── app-secrets.tf       # App namespace + Secret (DB creds, JWT key)
 │   ├── example.tfvars      # Example variable values (safe to commit)
 │   └── modules/
-│       └── vpc/            # VPC, subnets, NAT gateway, IGW
-├── helm/                   # Helm charts for applications (planned)
-├── argocd/                 # ArgoCD Application manifests (planned)
+│       ├── vpc/             # VPC, subnets, NAT gateway, IGW
+│       ├── eks/              # EKS cluster + managed node group
+│       └── rds/               # RDS PostgreSQL instance
+├── helm/                   # Helm charts for applications
+│   ├── backend/            # FastAPI backend chart
+│   └── frontend/           # React/Vite frontend chart (+ Ingress)
+├── argocd/apps/            # ArgoCD Application manifests (GitOps)
 ├── monitoring/             # Prometheus / Grafana / Loki config (planned)
-├── scripts/                # Helper scripts (planned)
+├── scripts/                # init-cluster.sh / destroy-cluster.sh
 ├── docs/                   # Additional documentation (planned)
 └── .github/                # GitHub Actions workflows (planned)
 ```
@@ -75,12 +82,13 @@ Amazon RDS PostgreSQL
 | Phase | Component | Status |
 |---|---|---|
 | 1 | VPC (subnets, NAT, IGW) | Done |
-| 2 | EKS cluster + node group | Planned |
-| 3 | NGINX Ingress + ArgoCD | Planned |
-| 4 | Application Helm charts | Planned |
-| 5 | RDS PostgreSQL | Planned |
-| 6 | CI/CD (GitHub Actions → ECR) | Planned |
-| 7 | Monitoring stack | Planned |
+| 2 | EKS cluster + node group | Done |
+| 3 | NGINX Ingress + ArgoCD | Done |
+| 4 | RDS PostgreSQL | Done |
+| 5 | ECR repos + app namespace/Secret | Done |
+| 6 | Application Helm charts (backend/frontend) | Done |
+| 7 | CI/CD (GitHub Actions → ECR) | Planned |
+| 8 | Monitoring stack | Planned |
 
 ## Prerequisites
 
@@ -239,6 +247,64 @@ This repository does **not** contain application source code.
 4. ArgoCD detects the change.
 5. ArgoCD deploys the new version to Amazon EKS.
 
+## Deploying the App (TM-Project)
+
+The `helm/backend` and `helm/frontend` charts deploy a Task Manager app
+(FastAPI + Postgres + React/Vite, source in a separate local repo) into the
+`tm-project` namespace. The Ingress in the frontend chart routes `/api` to
+the backend Service and `/` to the frontend Service, so both are reached
+through the **same** host — meaning the frontend must be built with the API
+URL set to a relative path, not `localhost`.
+
+**One-time setup**, after `terraform apply` has created the EKS cluster, ECR
+repos, and the `tm-project-backend-secrets` Secret:
+
+```bash
+# 1. Get the ECR repository URLs
+cd terraform
+terraform output -json ecr_repository_urls
+# {"tm-project-backend": "403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend", ...}
+
+# 2. Log in to ECR
+aws ecr get-login-password --region us-east-1 \
+  | docker login --username AWS --password-stdin 403113723064.dkr.ecr.us-east-1.amazonaws.com
+
+# 3. Build + push the backend
+cd /Users/ron/Desktop/TM-Project/backend
+docker build -t 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:latest .
+docker push 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:latest
+
+# 4. Build + push the frontend — note the build arg: since the Ingress
+#    serves both frontend and backend from the same host, the API URL must
+#    be a relative path baked in at build time, not localhost.
+cd ../frontend
+docker build --build-arg VITE_API_URL=/api \
+  -t 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:latest .
+docker push 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:latest
+```
+
+Then update `image.repository` in `helm/backend/values.yaml` and
+`helm/frontend/values.yaml` to the URLs above, commit and push (ArgoCD reads
+these charts straight from this git repo), and apply the Applications:
+
+```bash
+kubectl apply -f argocd/apps/backend.yaml -f argocd/apps/frontend.yaml
+```
+
+(`scripts/init-cluster.sh` already applies everything in `argocd/apps/`, so
+this step is only needed if you add these apps after the initial run.)
+
+Find the app's public URL via the ingress-nginx load balancer:
+
+```bash
+kubectl get svc -n ingress-nginx ingress-nginx-controller
+# open http://<EXTERNAL-IP-hostname>/
+```
+
+To ship a new version later: rebuild + push a new image tag, bump
+`image.tag` in the relevant `values.yaml`, commit — ArgoCD's automated sync
+picks it up (self-heal is on, so manual `kubectl edit` changes get reverted).
+
 ## Cost Awareness
 
 Resources that incur ongoing charges even when idle:
@@ -246,11 +312,12 @@ Resources that incur ongoing charges even when idle:
 | Resource | Approximate cost |
 |---|---|
 | NAT Gateway | ~$32+/month per gateway + data transfer |
-| EKS control plane | ~$73/month (when added) |
-| EC2 worker nodes | Depends on instance type and count |
-| RDS PostgreSQL | Depends on instance class (when added) |
+| EKS control plane | ~$73/month |
+| EC2 worker nodes | `t3.medium` × 2 ≈ $60/month (or ~$0.08/hr while running) |
+| RDS PostgreSQL | `db.t4g.micro` ≈ $12/month (or ~$0.016/hr while running) |
+| ECR storage | Negligible for a few images; lifecycle policy keeps only the last 10 |
 
-Use `terraform destroy` to remove the VPC stack when not in use. Set an [AWS Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-create.html) alert on your account.
+Use `./scripts/destroy-cluster.sh` (or `terraform destroy`) to remove the whole stack when not in use — this is the main lever for cost control while learning. Set an [AWS Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-create.html) alert on your account.
 
 ## Git and Secrets
 
