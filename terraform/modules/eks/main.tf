@@ -31,6 +31,19 @@ module "eks" {
     }
   }
 
+  # Pods talk across nodes (ingress controller -> frontend on port 80). The module
+  # only opens 1025-65535 between nodes, so port 80 needs its own rule.
+  node_security_group_additional_rules = {
+    ingress_self_http = {
+      description = "Node to node HTTP"
+      protocol    = "tcp"
+      from_port   = 80
+      to_port     = 80
+      type        = "ingress"
+      self        = true
+    }
+  }
+
   eks_managed_node_groups = {
     default = {
       instance_types = var.node_instance_types
