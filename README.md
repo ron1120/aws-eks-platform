@@ -114,6 +114,8 @@ Ensure your IAM policy allows the region you deploy into (this project defaults 
 
 ## Getting Started — Terraform (VPC)
 
+To bring up the whole platform in one go, run `./scripts/init-cluster.sh`. The steps below only build the VPC.
+
 ### 1. Configure variables
 
 Variable values are **not** committed to git. Copy the example file and edit it:
@@ -263,28 +265,28 @@ repos, and the `tm-project-backend-secrets` Secret:
 # 1. Get the ECR repository URLs
 cd terraform
 terraform output -json ecr_repository_urls
-# {"tm-project-backend": "403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend", ...}
+# {"tm-project-backend": "<account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend", ...}
 
 # 2. Log in to ECR
 aws ecr get-login-password --region us-east-1 \
-  | docker login --username AWS --password-stdin 403113723064.dkr.ecr.us-east-1.amazonaws.com
+  | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
 
 # 3. Build + push the backend
-cd /Users/ron/Desktop/TM-Project/backend
-docker build -t 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:latest .
-docker push 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:latest
+cd <path-to>/TM-Project/backend
+docker build -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:0.1.0 .
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:0.1.0
 
 # 4. Build + push the frontend — note the build arg: since the Ingress
 #    serves both frontend and backend from the same host, the API URL must
 #    be a relative path baked in at build time, not localhost.
 cd ../frontend
 docker build --build-arg VITE_API_URL=/api \
-  -t 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:latest .
-docker push 403113723064.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:latest
+  -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:0.1.0 .
+docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:0.1.0
 ```
 
-Then update `image.repository` in `helm/backend/values.yaml` and
-`helm/frontend/values.yaml` to the URLs above, commit and push (ArgoCD reads
+Then update `image.repository` and `image.tag` in `helm/backend/values.yaml` and
+`helm/frontend/values.yaml` to the URL and version above, commit and push (ArgoCD reads
 these charts straight from this git repo), and apply the Applications:
 
 ```bash

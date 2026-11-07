@@ -54,15 +54,8 @@ log "Waiting for nodes to be Ready"
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
 log "Adding Helm repos"
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx >/dev/null
 helm repo add argo https://argoproj.github.io/argo-helm >/dev/null
 helm repo update >/dev/null
-
-log "Installing/upgrading ingress-nginx"
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx \
-  --create-namespace \
-  --wait
 
 log "Installing/upgrading ArgoCD"
 helm upgrade --install argocd argo/argo-cd \
@@ -71,7 +64,7 @@ helm upgrade --install argocd argo/argo-cd \
   --wait
 
 if [ -d "$ARGOCD_APPS_DIR" ] && [ -n "$(ls -A "$ARGOCD_APPS_DIR" 2>/dev/null)" ]; then
-  log "Applying ArgoCD Application manifests from argocd/apps/"
+  log "Applying ArgoCD Application manifests from argocd/apps/ (ArgoCD installs ingress-nginx too)"
   kubectl apply -f "$ARGOCD_APPS_DIR"
 else
   log "No ArgoCD Application manifests found in argocd/apps/, skipping"

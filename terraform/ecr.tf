@@ -4,7 +4,7 @@ resource "aws_ecr_repository" "app" {
   for_each = toset(var.ecr_repositories)
 
   name                 = each.value
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
   # Lets `terraform destroy` remove the repo even if it still has images —
   # important since we tear this stack down/up regularly while learning.
   force_delete = true

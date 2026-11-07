@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Tears down everything created by scripts/init-cluster.sh: Helm releases
-# (ArgoCD, ingress-nginx) and the full Terraform stack (VPC + EKS + RDS + ECR
+# Tears down everything created by scripts/init-cluster.sh: the ArgoCD apps
+# (incl. the ingress load balancer), ArgoCD itself and the full Terraform stack (VPC + EKS + RDS + ECR
 # repos + app namespace/Secret).
 #
 # Run this when you're done for the day to avoid paying for the EKS control
@@ -23,9 +23,12 @@ if ! command -v terraform >/dev/null 2>&1; then
   exit 1
 fi
 
-log "Uninstalling Helm releases (best-effort, ignored if already gone)"
+log "Deleting ArgoCD apps (this removes the ingress load balancer) and waiting for it to be gone"
+kubectl delete -f "$REPO_ROOT/argocd/apps/" --wait --timeout=300s 2>/dev/null || true
+kubectl wait --for=delete svc/ingress-nginx-controller -n ingress-nginx --timeout=300s 2>/dev/null || true
+
+log "Uninstalling ArgoCD (best-effort, ignored if already gone)"
 helm uninstall argocd -n argocd 2>/dev/null || true
-helm uninstall ingress-nginx -n ingress-nginx 2>/dev/null || true
 
 log "Terraform destroy (VPC + EKS + RDS + ECR + app namespace/Secret)"
 terraform -chdir="$TERRAFORM_DIR" destroy -auto-approve
