@@ -10,6 +10,9 @@ resource "kubernetes_namespace" "app" {
   metadata {
     name = var.app_namespace
   }
+
+  # Wait for the cluster (and the admin access entry) to be ready.
+  depends_on = [module.eks]
 }
 
 # Signs the backend's JWTs. Generated once and stored only in the cluster.
