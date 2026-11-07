@@ -55,7 +55,7 @@ kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
 log "Adding Helm repos"
 helm repo add argo https://argoproj.github.io/argo-helm >/dev/null
-helm repo update >/dev/null
+helm repo update argo >/dev/null
 
 log "Installing/upgrading ArgoCD"
 helm upgrade --install argocd argo/argo-cd \
