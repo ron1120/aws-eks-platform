@@ -255,8 +255,8 @@ The `helm/backend` and `helm/frontend` charts deploy a Task Manager app
 (FastAPI + Postgres + React/Vite, source in a separate local repo) into the
 `tm-project` namespace. The Ingress in the frontend chart routes `/api` to
 the backend Service and `/` to the frontend Service, so both are reached
-through the **same** host — meaning the frontend must be built with the API
-URL set to a relative path, not `localhost`.
+through the **same** host — meaning the frontend must be built with an empty
+API URL, not `localhost`.
 
 **One-time setup**, after `terraform apply` has created the EKS cluster, ECR
 repos, and the `tm-project-backend-secrets` Secret:
@@ -278,9 +278,10 @@ docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-backend:0.1.
 
 # 4. Build + push the frontend — note the build arg: since the Ingress
 #    serves both frontend and backend from the same host, the API URL must
-#    be a relative path baked in at build time, not localhost.
+#    be empty (the app already adds /api to every call), not localhost.
+#    Needs the app commit that reads VITE_API_URL with `??` instead of `||`.
 cd ../frontend
-docker build --build-arg VITE_API_URL=/api \
+docker build --build-arg VITE_API_URL= \
   -t <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:0.1.0 .
 docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/tm-project-frontend:0.1.0
 ```
