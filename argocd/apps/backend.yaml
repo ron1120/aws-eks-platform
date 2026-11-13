@@ -8,7 +8,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/ron1120/aws-eks-platform.git
+    repoURL: https://github.com/rronss/aws-eks-platform.git
     targetRevision: main
     path: helm/backend
     helm:
